@@ -97,5 +97,5 @@ hdu.header["CDELT2"] = target_hdr["CDELT2"]
 hdu.header["CTYPE2"] = target_hdr["CTYPE2"]
 
 hdulist = fits.HDUList([hdu])
-hdulist.writeto(pathout + "Planck_GNILC_IRIS-SFD_adim_{}_{}_{}.fits".format(Glon, Glat, sizex), clobber=True)
-# hdulist.writeto(pathout + "PLANCK_IRIS-SFD_adim_G86.fits", overwrite=True)
+# hdulist.writeto(pathout + "Planck_GNILC_IRIS-SFD_adim_{}_{}_{}.fits".format(Glon, Glat, sizex), clobber=True)
+hdulist.writeto(pathout + "GNILC_IRIS-SFD_adim_G86.fits", overwrite=True)
