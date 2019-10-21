@@ -184,3 +184,43 @@ def init_bounds(cube, params, lb_sig, ub_sig, lb_beta, ub_beta, lb_T, ub_T):
                 bounds_sup[2+(3*k),i,j] = bounds_sigma[1]
             
     return [(bounds_inf.ravel()[i], bounds_sup.ravel()[i]) for i in np.arange(len(bounds_sup.ravel()))]
+
+
+def init_bounds_mean(n_mbb, lb_sig, ub_sig, lb_beta, ub_beta, lb_T, ub_T):
+    bounds_inf = np.zeros(3*n_mbb)
+    bounds_sup = np.zeros(3*n_mbb)
+    
+    bounds_inf[0::3] = lb_sig
+    bounds_inf[1::3] = lb_beta
+    bounds_inf[2::3] = lb_T
+    
+    bounds_sup[0::3] = ub_sig
+    bounds_sup[1::3] = ub_beta
+    bounds_sup[2::3] = ub_T
+    
+    return [(bounds_inf[i], bounds_sup[i]) for i in np.arange(len(bounds_sup))]
+
+
+def reshape_cube_up(cube, nside):
+    subcube = np.zeros((cube.shape[0], 2**nside, 2**nside))
+    cube_w, cube_h = cube.shape[1], cube.shape[2]
+    subcube_w, subcube_h = 2**nside, 2**nside
+    offset = ((subcube_w - cube_w) / 2, (subcube_h - cube_h) / 2)
+    
+    subcube[:, offset[0]:offset[0]+cube_w, offset[1]:offset[1]+cube_h] = cube
+
+    return subcube
+
+
+# def reshape_cube_down(subcube, shape, nside): Je sais pas si ca marche
+#     cube = np.zeros(shape)
+#     cube_w, cube_h = cube.shape[1], cube.shape[2]
+#     subcube_w, subcube_h = 2**nside, 2**nside
+#     offset = ((subcube_w - cube_w) / 2, (subcube_h - cube_h) / 2)
+    
+#     cube = subcube[:, offset[0]:offset[0]+cube_w, offset[1]:offset[1]+cube_h]
+
+#     return cube
+
+
+

@@ -38,7 +38,7 @@ pl_353, hdr_353 = hp.read_map(path_pl + "COM_CompMap_Dust-GNILC-F353_2048_R2.00.
 pl_545, hdr_545 = hp.read_map(path_pl + "COM_CompMap_Dust-GNILC-F545_2048_R2.00.fits", h=True)
 pl_857, hdr_857 = hp.read_map(path_pl + "COM_CompMap_Dust-GNILC-F857_2048_R2.00.fits", h=True)
 
-iris_3000, hdr_3000 = hp.read_map(path_iras + "IRIS_combined_SFD_really_nohole_nosource_4_2048.fits", h=True)
+iris_3000, hdr_3000 = hp.read_map(path_iras + "IRIS_combined_SFD_really_nohole_4_2048.fits", h=True)
 
 pl_353_smoothed = hp.smoothing(pl_353, fwhm=kernel*arcmin2rad)
 pl_545_smoothed = hp.smoothing(pl_545, fwhm=kernel*arcmin2rad)
