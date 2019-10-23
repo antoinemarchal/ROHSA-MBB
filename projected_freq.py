@@ -28,7 +28,8 @@ kernel = np.sqrt(resolution_GBT**2 - resolution_GNILC**2)
 path_pl = "/data/amarchal/PLANCK/"
 path_iras = "/data/amarchal/IRAS/"
 
-# pl_353, hdr_353 = hp.read_map(path_pl + "HFI_SkyMap_353-field-Int_2048_R3.00_full.fits", h=True)
+# pl_353_K, hdr_353 = hp.read_map(path_pl + "HFI_SkyMap_353-field-Int_2048_R3.00_full.fits", h=True)
+# pl_353 = (pl_353_K*u.K).to(u.MJy / u.sr, equivalencies=u.thermodynamic_temperature(353*u.GHz)).value  
 # pl_545, hdr_545 = hp.read_map(path_pl + "HFI_SkyMap_545-field-Int_2048_R3.00_full.fits", h=True)
 # pl_857, hdr_857 = hp.read_map(path_pl + "HFI_SkyMap_857-field-Int_2048_R3.00_full.fits", h=True)
 
@@ -39,6 +40,12 @@ pl_545, hdr_545 = hp.read_map(path_pl + "COM_CompMap_Dust-GNILC-F545_2048_R2.00.
 pl_857, hdr_857 = hp.read_map(path_pl + "COM_CompMap_Dust-GNILC-F857_2048_R2.00.fits", h=True)
 
 iris_3000, hdr_3000 = hp.read_map(path_iras + "IRIS_combined_SFD_really_nohole_4_2048.fits", h=True)
+
+#Offset
+pl_353 -= 0.1248
+pl_545 -= 0.3356
+pl_857 -= 0.5561
+iris_3000 -= 0.1128
 
 pl_353_smoothed = hp.smoothing(pl_353, fwhm=kernel*arcmin2rad)
 pl_545_smoothed = hp.smoothing(pl_545, fwhm=kernel*arcmin2rad)
@@ -98,4 +105,5 @@ hdu.header["CTYPE2"] = target_hdr["CTYPE2"]
 
 hdulist = fits.HDUList([hdu])
 # hdulist.writeto(pathout + "Planck_GNILC_IRIS-SFD_adim_{}_{}_{}.fits".format(Glon, Glat, sizex), clobber=True)
+# hdulist.writeto(pathout + "PLANCK_IRIS-SFD_adim_G86.fits", overwrite=True)
 hdulist.writeto(pathout + "GNILC_IRIS-SFD_adim_G86.fits", overwrite=True)

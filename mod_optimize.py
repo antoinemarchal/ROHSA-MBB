@@ -103,11 +103,22 @@ def f_g_mean(params, n_mbb, wave, data, l0, NHI):
     return 0.5*J, deriv
 
 
-def f_g(pars, n_mbb, wave, data, l0, NHI, lambda_sig, lambda_beta, lambda_T, lambda_var_sig, kernel): 
+def f_g(pars, n_mbb, wave, data, l0, NHI, lambda_sig, lambda_beta, lambda_T, lambda_var_sig, lambda_var_beta, lambda_var_T, kernel): 
 
     dim_params = n_mbb*3*data.shape[1]*data.shape[2]
     params = np.reshape(pars[:dim_params], (3*n_mbb, data.shape[1], data.shape[2]))
-    b = pars[dim_params:]
+    b = np.zeros(n_mbb)
+    c = np.zeros(n_mbb)
+    d = np.zeros(n_mbb)
+    
+    for i in np.arange(len(b)): 
+        b[i] = pars[dim_params+(0+(3*i))]
+        c[i] = pars[dim_params+(1+(3*i))]
+        d[i] = pars[dim_params+(2+(3*i))]
+        
+    # print np.mean(params[0::3],(1,2))
+    # print np.mean(params[1::3],(1,2))
+    # print np.mean(params[2::3],(1,2))
     
     model = np.zeros(data.shape)
     F = np.zeros(data.shape)
@@ -137,20 +148,30 @@ def f_g(pars, n_mbb, wave, data, l0, NHI, lambda_sig, lambda_beta, lambda_T, lam
     J = np.sum(((model - data).ravel())**2)
     R = np.sum(conv**2)    
 
-    for k in np.arange(len(b)): R_var += lambda_var_sig * np.sum((params[0+(k*3)] - b[k])**2.)
+    for k in np.arange(len(b)): 
+        R_var += lambda_var_sig * np.sum((params[0+(k*3)] - b[k])**2.)
+        R_var += lambda_var_beta * np.sum((params[1+(k*3)] - c[k])**2.)
+        R_var += lambda_var_T * np.sum((params[2+(k*3)] - d[k])**2.)
 
     F = model - data
 
     grad = np.zeros(pars.shape)
     grad_F_times_F = np.sum(dF_over_dB * F,axis=1)
     grad_R = dR_over_dB
-    grad_R_var = (params[0::3].transpose() - b).transpose()
+    grad_R_var_sig = (params[0::3].transpose() - b).transpose()
+    grad_R_var_beta = (params[1::3].transpose() - c).transpose()
+    grad_R_var_T = (params[2::3].transpose() - d).transpose()
 
     grad_cube = grad_F_times_F + grad_R
-    grad_cube[0::3] += lambda_var_sig*grad_R_var
+    grad_cube[0::3] += lambda_var_sig * grad_R_var_sig
+    grad_cube[1::3] += lambda_var_beta * grad_R_var_beta
+    grad_cube[2::3] += lambda_var_T * grad_R_var_T
 
     grad[:dim_params] = grad_cube.ravel()
-    for k in np.arange(len(b)): grad[dim_params+k] = - lambda_var_sig * np.sum((params[0+(k*3)] - b[k]))
+    for k in np.arange(len(b)): 
+        grad[dim_params+(0+(k*3))] = - lambda_var_sig * np.sum((params[0+(k*3)] - b[k]))
+        grad[dim_params+(1+(k*3))] = - lambda_var_beta * np.sum((params[1+(k*3)] - c[k]))
+        grad[dim_params+(2+(k*3))] = - lambda_var_T * np.sum((params[2+(k*3)] - d[k]))
         
     return 0.5*(J + R + R_var), grad
 
