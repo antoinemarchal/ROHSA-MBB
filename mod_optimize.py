@@ -104,7 +104,6 @@ def f_g_mean(params, n_mbb, wave, data, l0, NHI):
 
 
 def f_g(pars, n_mbb, wave, data, l0, NHI, lambda_sig, lambda_beta, lambda_T, lambda_var_sig, lambda_var_beta, lambda_var_T, kernel): 
-
     dim_params = n_mbb*3*data.shape[1]*data.shape[2]
     params = np.reshape(pars[:dim_params], (3*n_mbb, data.shape[1], data.shape[2]))
     b = np.zeros(n_mbb)

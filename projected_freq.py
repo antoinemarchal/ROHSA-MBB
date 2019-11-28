@@ -67,8 +67,8 @@ reso = np.sqrt(hp.nside2pixarea(nside, degrees=True))/2.
 # size=(1200,1200)
 
 #Or open wcs from FITS file (HI for exemple)
-path = "/data/amarchal/G86/"
-fitsname = "data/GHIGLS_G86_Tb.fits"
+path = "/data/amarchal/EN/"
+fitsname = "data/GHIGLS_N1_Tb.fits"
 hdu = fits.open(path+fitsname)
 hdr = hdu[0].header
 cube = hdu[0].data[0]
@@ -106,4 +106,4 @@ hdu.header["CTYPE2"] = target_hdr["CTYPE2"]
 hdulist = fits.HDUList([hdu])
 # hdulist.writeto(pathout + "Planck_GNILC_IRIS-SFD_adim_{}_{}_{}.fits".format(Glon, Glat, sizex), clobber=True)
 # hdulist.writeto(pathout + "PLANCK_IRIS-SFD_adim_G86.fits", overwrite=True)
-hdulist.writeto(pathout + "GNILC_IRIS-SFD_adim_G86.fits", overwrite=True)
+hdulist.writeto(pathout + "GNILC_IRIS-SFD_adim_N1.fits", overwrite=True)

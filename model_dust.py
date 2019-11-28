@@ -3,16 +3,36 @@ import matplotlib.pyplot as plt
 from astropy import constants as const
 from astropy import units as u
 
-def planck_nu(nu, T):
-    return 2. * const.h * nu**3. / const.c**2 * 1./(np.exp(const.h*nu/const.k_B/T) - 1.)
+import mod_optimize as mod_opt
+reload(mod_opt)
 
-def intensity(nu, beta, tau, T, nu0):
-    return tau * (nu/nu0)**beta * planck_nu(nu,T)
-
-
-wavelength = np.arange(40,3000,1) * u.micron
+wavelength = np.arange(90,900,1) * u.micron
 freq = (const.c / wavelength).to(u.GHz)
 
-I = intensity(freq,1.77,1.e-10,16.47*u.K,353*u.GHz).to(u.mJy)
+sigma = np.arange(10) *u.cm**2
+beta = np.linspace(1.,2.5,10)
+T = np.linspace(8.2,20.,10) *u.K
+NHI = 1. * u.cm**-2
+
+I_l_beta = [mod_opt.MBB_l(wavelength,NHI,np.mean(sigma),b,np.mean(T),(const.c/(353*u.GHz)).to(u.micron)).to(u.W*u.m**-3) for b in beta]
+I_l_T = [mod_opt.MBB_l(wavelength,NHI,np.mean(sigma),np.mean(beta),tdust,(const.c/(353*u.GHz)).to(u.micron)).to(u.W*u.m**-3) for tdust in T]
+
+I_l_beta_adim = [mod_opt.MBB_l_adim(wavelength,NHI,np.mean(sigma),b,np.mean(T),(const.c/(353*u.GHz)).to(u.micron)) for b in beta]
+I_l_T_adim = [mod_opt.MBB_l_adim(wavelength,NHI,np.mean(sigma),np.mean(beta),tdust,(const.c/(353*u.GHz)).to(u.micron)) for tdust in T]
+
+# fig, (ax1, ax2) = plt.subplots(1, 2)
+# for I in I_l_beta: ax1.plot(wavelength, I)
+# for I in I_l_T: ax2.plot(wavelength, I)
+
+fig, (ax1, ax2) = plt.subplots(1, 2)
+for I in I_l_beta_adim: ax1.plot(wavelength, I)
+for I in I_l_T_adim: ax2.plot(wavelength, I)
+ax1.set(xlabel=r"$\lambda$ [micron]", ylabel='I [adim]')
+ax2.set(xlabel=r"$\lambda$ [micron]", ylabel='I [adim]')
+ax1.set_title('Variation Beta')
+ax2.set_title('Variation T')
+
+
+
 
 

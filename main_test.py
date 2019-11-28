@@ -9,8 +9,8 @@ from astropy import constants as const
 from astropy import units as u
 from scipy import optimize
 
-import mod_optimize as mod_opt
-reload(mod_opt)
+import mod_optimize
+reload(mod_optimize)
 
 import turbulence as tb
 
@@ -20,48 +20,75 @@ def planckct():
     colombi1_cmap.set_under("white")
     return colombi1_cmap
 
-#Open data GNILC_IRIS-SFD_adim
-path = "/data/amarchal/GNILC_IRIS-SFD_adim/"
-# path = "/data/amarchal/PLANCK_IRIS-SFD_adim/"
-fitsname = "GNILC_IRIS-SFD_adim_G86.fits"
-# fitsname = "PLANCK_IRIS-SFD_adim_G86.fits"
-hdu = fits.open(path+fitsname)
-hdr = hdu[0].header
-cube = hdu[0].data[:,44-32:44+32,44-32:44+32] *1.e6 #Attention rescale
-# cube = hdu[0].data[:,:64,:64] *1.e6 #Attention rescale
+def poly(coef, xx, yy, degree):
+    model = 0.
+    k = 0
+    for i in np.arange(degree):
+        for j in np.arange(degree+1-i):
+            model += coef[k] * xx**i * yy**j
+            k += 1
+    return model
+
+#Open color correction file
+color = fits.open("/data/amarchal/PLANCK/col_cor_iras_hfi_DX9v2_poly.fits")[0].data
+
+shape = (64,64)
+gamma = 3.66
+
+NHI = tb.fBmnd(shape, tb.Pkgen(gamma,0.,np.inf), seed=26, unit_length=1)
+NHI = np.interp(NHI, (NHI.min(), NHI.max()), (0., 100.))
+
+sigma = tb.fBmnd(shape, tb.Pkgen(gamma,0.,np.inf), seed=27, unit_length=1)
+sigma = np.interp(sigma, (sigma.min(), sigma.max()), (0., 2.))
+
+beta = tb.fBmnd(shape, tb.Pkgen(gamma,0.,np.inf), seed=28, unit_length=1)
+beta = np.interp(beta, (beta.min(), beta.max()), (1.2, 2.))
+
+T = tb.fBmnd(shape, tb.Pkgen(gamma,0.,np.inf), seed=29, unit_length=1)
+T = np.interp(T, (T.min(), T.max()), (14., 21.))
+
+NHI = NHI *u.cm**-2
+sigma = sigma * u.cm**2
+T *= u.K
+
+shape = (4,4)
+NHI = 1. *u.cm**-2
+sigma = 1. * u.cm**2
+beta = 1.84
+T = 16.4 * u.K
+
+# freq = np.array([np.full((shape[0],shape[1]),i) for i in np.arange(330,3000,10)]) * u.GHz
+# wavelength = (const.c / freq).to(u.micron)
+
+# freq = np.array([np.full((shape[0],shape[1]),i) for i in np.array([353,545,857,1250,2140,3000,3001])])*u.GHz
+# wavelength = (const.c / freq).to(u.micron)
+
+freq = np.array([np.full((shape[0],shape[1]),i) for i in np.array([353,545,857,3000])])*u.GHz
+wavelength = (const.c / freq).to(u.micron)
+
+I = mod_optimize.MBB_nu(freq,NHI,sigma,beta,T,857*u.GHz).to(u.MJy)
+# I_adim = mod_optimize.MBB_l_adim(wavelength,NHI,sigma,beta,T,(const.c/(857*u.GHz)).to(u.micron))
+
+degree = 5
+
+cc = np.array([poly(color[i,:],beta,T.value,degree) for i in np.arange(len(freq[:,0,0]))])
+
+cube = np.zeros(I.shape)
+for i in np.arange(cube.shape[0]):
+    cube[i] = I.value[i] * cc[i]
 
 nside = np.max([int(np.ceil(np.log(cube.shape[1]) / np.log(2))), int(np.ceil(np.log(cube.shape[2]) / np.log(2)))])
 
-freq = np.array([np.full((cube.shape[1],cube.shape[2]),i) for i in np.array([353,545,857,3000])])*u.GHz
-wavelength = (const.c / freq).to(u.micron)
-wavelength_full = np.array([np.full((cube.shape[1],cube.shape[2]),i) for i in np.arange(100,900,1)]) * u.micron
-
-#Open HI model CNM WNM with ROHSA
-path_HI = "/data/amarchal/G86/model/"
-fitsname_HI = "GHIGLS_G86_LVC_IVC_CNM_WNM.fits"
-hdu_HI = fits.open(path_HI+fitsname_HI)
-hdr_HI = hdu_HI[0].header
-NHI = hdu_HI[0].data[:,44-32:44+32,44-32:44+32] *u.cm**-2 # 1.e18
-# NHI = hdu_HI[0].data[:,:64,:64] *u.cm**-2 # 1.e18
-
-# NHI = np.zeros((1,cube.shape[1],cube.shape[2]))
-# NHI[0,:,:] = np.sum(hdu_HI[0].data[:,44-32:44+32,44-32:44+32],0)
-# NHI = NHI*u.cm**-2
-
-# #Reshape cubes
-# cube = mod_opt.reshape_cube_up(cube,nside)
-# NHI =  mod_opt.reshape_cube_up(NHI,nside) *u.cm**-2
-
 #Parameters ROHSA+ MBB
-n_mbb = NHI.shape[0]
-lambda_sig = 100.                                                                                                                      
-lambda_beta = 0.5
-lambda_T = 0.5                                                                              
-lambda_var_sig = 100.
+n_mbb = 1
+lambda_sig = 1.                                                                                                                  
+lambda_beta = 1.
+lambda_T = 1.                                                                              
+lambda_var_sig = 0.
 lambda_var_beta = 0.
 lambda_var_T = 0.
 lb_sig = 0.                                                                                                       
-ub_sig = 100.                                                                                                       
+ub_sig = 100000.                                                                                                       
 lb_beta = 1.                                                                                                       
 ub_beta = 2.5
 lb_T = 8.2                                                                                                       
@@ -72,10 +99,10 @@ lb_c = 1.
 ub_c = 2.5                       
 lb_d = 8.2                                                                                                       
 ub_d = 50.                       
-l0 = 349.81617036*u.micron
+l0 = 857*u.GHz
 sig_init = 1. 
-beta_init = 2. 
-T_init = 17. 
+beta_init = 1. 
+T_init = 17.
 maxiter_init = 15000                                                                                              
 maxiter = 400                                                                                   
 m = 10                                                                                                
@@ -86,6 +113,8 @@ save_grid = ".true."
 
 kernel = np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]]) / 4.
 
+NHI = np.ones((1,cube.shape[1],cube.shape[2])) *u.cm**-2
+
 #Start algorithn ROHSA+ MMB
 mean_sed = np.mean(cube,(1,2))
 mean_NHI = np.mean(NHI,(1,2))
@@ -95,19 +124,31 @@ mean_params[1::3] = beta_init
 mean_params[2::3] = T_init
 
 #Fit mean SED
-bounds = mod_opt.init_bounds_mean(n_mbb, lb_sig, ub_sig, lb_beta, ub_beta, lb_T, ub_T)
+bounds = mod_optimize.init_bounds_mean(n_mbb, lb_sig, ub_sig, lb_beta, ub_beta, lb_T, ub_T)
 
 print mean_params
 print n_mbb
-print wavelength[:,0,0]
+print freq[:,0,0]
 print mean_sed
 print l0
 print mean_NHI
 print bounds
 
-init = optimize.fmin_l_bfgs_b(mod_opt.f_g_mean, mean_params, args=(n_mbb, wavelength[:,0,0], mean_sed, l0, mean_NHI), bounds=bounds, 
-                                    approx_grad=False, disp=iprint_init, maxiter=maxiter_init, factr=1.)
+def f_g_mean(params, n_mbb, freq, data, l0, NHI):
+    model = np.zeros(data.shape)
 
+    line = mod_optimize.MBB_nu(freq,NHI[0],params[0]*u.cm**2, params[1], params[2]*u.K,l0).to(u.MJy)
+    colc = np.array([poly(color[i,:],params[1],params[2],degree) for i in np.arange(len(cc))])    
+    model = line.value * colc
+        
+    J = np.sum(((model - data).ravel())**2)
+    
+    return 0.5*J
+
+init = optimize.fmin_l_bfgs_b(f_g_mean, mean_params, args=(n_mbb, freq[:,0,0], mean_sed, l0, mean_NHI), bounds=bounds, 
+                                    approx_grad=True, disp=iprint_init, maxiter=15000, factr=1000000.0)
+
+stop
 
 #Init multiresolution process
 b = init[0][0::3]
@@ -124,13 +165,13 @@ for n in np.arange(nside)+1:
     dim_params = params.shape[0]*params.shape[1]*params.shape[2]
     theta = np.zeros(dim_params+(3*len(b)))
 
-    SED_mean = mod_opt.mean_cube(cube,2**n)
-    NHI_mean = mod_opt.mean_cube(NHI,2**n) * u.cm**-2
+    SED_mean = mod_optimize.mean_cube(cube,2**n)
+    NHI_mean = mod_optimize.mean_cube(NHI,2**n) * u.cm**-2
     
     freq_mean = np.array([np.full((SED_mean.shape[1],SED_mean.shape[2]),i) for i in np.array([353,545,857,3000])])*u.GHz
     wavelength_mean = (const.c / freq_mean).to(u.micron)
 
-    bounds = mod_opt.init_bounds(SED_mean, params, lb_sig, ub_sig, lb_beta, ub_beta, lb_T, ub_T)
+    bounds = mod_optimize.init_bounds(SED_mean, params, lb_sig, ub_sig, lb_beta, ub_beta, lb_T, ub_T)
 
     theta[:dim_params] = params.ravel()    
     for i in np.arange(len(b)): 
@@ -141,7 +182,7 @@ for n in np.arange(nside)+1:
         bounds.append((lb_c, ub_c))
         bounds.append((lb_d, ub_d))
 
-    theta = optimize.fmin_l_bfgs_b(mod_opt.f_g, theta, args=(n_mbb, wavelength_mean, SED_mean, l0, NHI_mean, lambda_sig, lambda_beta, lambda_T, 
+    theta = optimize.fmin_l_bfgs_b(mod_optimize.f_g, theta, args=(n_mbb, wavelength_mean, SED_mean, l0, NHI_mean, lambda_sig, lambda_beta, lambda_T, 
                                                              lambda_var_sig, lambda_var_beta, lambda_var_T, kernel), 
                                    bounds=bounds, approx_grad=False, disp=iprint, maxiter=maxiter)
     params = np.reshape(theta[0][:dim_params],(params.shape))
@@ -150,15 +191,15 @@ for n in np.arange(nside)+1:
         c[i] = theta[0][dim_params+(1+(3*i))]
         d[i] = theta[0][dim_params+(2+(3*i))]
 
-    if n != nside : params = mod_opt.go_up_level(params)
+    if n != nside : params = mod_optimize.go_up_level(params)
     
 wavelength_mean_full = np.array([np.full((SED_mean.shape[1],SED_mean.shape[2]),i) for i in np.arange(100,900,1)]) * u.micron
 
 model_full = 0.
 model = 0.
 for k in np.arange(n_mbb):
-    model_full += mod_opt.MBB_l_adim(wavelength_mean_full,NHI[k],params[0+(k*3)]*u.cm**2,params[1+(k*3)],params[2+(k*3)]*u.K,l0)
-    model += mod_opt.MBB_l_adim(wavelength_mean,NHI[k],params[0+(k*3)]*u.cm**2,params[1+(k*3)],params[2+(k*3)]*u.K,l0)
+    model_full += mod_optimize.MBB_l_adim(wavelength_mean_full,NHI[k],params[0+(k*3)]*u.cm**2,params[1+(k*3)],params[2+(k*3)]*u.K,l0)
+    model += mod_optimize.MBB_l_adim(wavelength_mean,NHI[k],params[0+(k*3)]*u.cm**2,params[1+(k*3)],params[2+(k*3)]*u.K,l0)
 
 sigfield = params[0::3]
 betafield = params[1::3]
